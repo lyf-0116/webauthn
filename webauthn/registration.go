@@ -258,6 +258,10 @@ func (webauthn *WebAuthn) CreateCredential(user User, session SessionData, parse
 		return nil, err
 	}
 
+	// Record the user verification requirement the ceremony was begun with so a later login ceremony can compare
+	// its own requirement against what was promised at registration; see [Credential.RegistrationUserVerification].
+	credential.RegistrationUserVerification = session.UserVerification
+
 	// An authenticator which does not support credBlob ignores it rather than reporting that it did not store the
 	// blob, so for a requested blob the absence of an outcome is recorded as not stored.
 	if session.Extensions.CredBlob && credential.Extensions.CredBlobSet == nil {

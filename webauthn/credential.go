@@ -14,6 +14,7 @@ import (
 
 //msgp:replace protocol.AuthenticatorTransport with:string
 //msgp:replace protocol.CredentialProtectionPolicy with:string
+//msgp:replace protocol.UserVerificationRequirement with:string
 //msgp:shim CredentialFlags as:byte using:(CredentialFlags).MsgpByte/CredentialFlagsFromMsgpByte
 //msgp:clearomitted
 
@@ -133,6 +134,17 @@ type Credential struct {
 
 	// Flags represent the commonly stored flags.
 	Flags CredentialFlags `json:"flags" msg:"flg"`
+
+	// RegistrationUserVerification is the user verification requirement the Relying Party placed on the
+	// registration ceremony which created this credential, i.e. the userVerification value of the registration
+	// options the ceremony was begun with. It records what the Relying Party promised at registration, as opposed
+	// to [CredentialFlags.UserVerified] which records what the authenticator did.
+	//
+	// [WebAuthn.ValidateLogin] consults this value when the login session requires user verification: a
+	// credential whose registration did not promise user verification cannot satisfy that requirement, and the
+	// empty value, which is what records persisted before this field existed decode to, is treated the same way,
+	// so such credentials must be re-registered under a user verification requirement to be usable with one.
+	RegistrationUserVerification protocol.UserVerificationRequirement `json:"registrationUserVerification,omitempty" msg:"ruv,omitempty"`
 
 	// The Authenticator information for a given Credential.
 	Authenticator Authenticator `json:"authenticator" msg:"a"`

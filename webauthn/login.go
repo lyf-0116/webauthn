@@ -423,6 +423,21 @@ func validateLogin(config *Config, user User, session SessionData, parsedRespons
 	shouldVerifyUser := session.UserVerification == protocol.VerificationRequired
 	shouldVerifyUserPresence := true
 
+	// When the ceremony requires user verification, the credential must have been registered under a user
+	// verification promise before this ceremony's flags are even considered. A credential registered without
+	// the promise cannot have its registration-time verification relied upon, and a record which carries no
+	// promise at all, i.e. one persisted before the promise was recorded, is treated the same way: the
+	// credential must be re-registered under a user verification requirement.
+	if shouldVerifyUser {
+		switch credential.RegistrationUserVerification {
+		case protocol.VerificationRequired:
+		case "":
+			return nil, protocol.ErrBadRequest.WithDetails("User verification is required but the credential record does not indicate the user verification requirement of its registration ceremony; the credential must be re-registered")
+		default:
+			return nil, protocol.ErrBadRequest.WithDetails(fmt.Sprintf("User verification is required but the credential was registered with user verification '%s'; the credential must be re-registered", credential.RegistrationUserVerification))
+		}
+	}
+
 	rpID := session.GetRelyingPartyID(config.RPID)
 	rpOrigins := session.GetOrigins(config.RPOrigins)
 	rpOpaqueOrigins := config.RPOpaqueOrigins

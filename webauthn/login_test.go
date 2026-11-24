@@ -1709,6 +1709,78 @@ func TestValidateLoginLatchesUserVerified(t *testing.T) {
 	assert.True(t, credential.Flags.BackupState)
 }
 
+func TestValidateLoginUserVerificationPromise(t *testing.T) {
+	parsedResponse, credPubKey, challenge, credentialID := testLoginSpecVectorNoneES256(t)
+
+	// The assertion of the vector does not verify the user, so a credential which passes the promise gate still
+	// fails the ceremony flag check; reaching that failure is what proves the gate passed.
+	require.False(t, parsedResponse.Response.AuthenticatorData.Flags.HasUserVerified())
+
+	webauthn := &WebAuthn{
+		Config: &Config{
+			RPID:      "example.org",
+			RPOrigins: []string{"https://example.org"},
+		},
+	}
+
+	userID := []byte(testUserID)
+
+	testCases := []struct {
+		name    string
+		promise protocol.UserVerificationRequirement
+		err     string
+	}{
+		{
+			name: "ShouldRejectRecordWithoutPromise",
+			err:  "User verification is required but the credential record does not indicate the user verification requirement of its registration ceremony; the credential must be re-registered",
+		},
+		{
+			name:    "ShouldRejectPreferredPromise",
+			promise: protocol.VerificationPreferred,
+			err:     "User verification is required but the credential was registered with user verification 'preferred'; the credential must be re-registered",
+		},
+		{
+			name:    "ShouldRejectDiscouragedPromise",
+			promise: protocol.VerificationDiscouraged,
+			err:     "User verification is required but the credential was registered with user verification 'discouraged'; the credential must be re-registered",
+		},
+		{
+			name:    "ShouldVerifyAssertionFlagWhenPromised",
+			promise: protocol.VerificationRequired,
+			err:     "Error validating the authenticator response",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			user := &defaultUser{
+				id: userID,
+				credentials: []Credential{
+					{
+						ID:        credentialID,
+						PublicKey: credPubKey,
+						Flags: CredentialFlags{
+							UserPresent:    true,
+							BackupEligible: true,
+						},
+						RegistrationUserVerification: tc.promise,
+					},
+				},
+			}
+
+			session := SessionData{
+				UserID:           userID,
+				Challenge:        challenge,
+				UserVerification: protocol.VerificationRequired,
+			}
+
+			credential, err := webauthn.ValidateLogin(user, session, parsedResponse)
+			assert.Nil(t, credential)
+			require.EqualError(t, err, tc.err)
+		})
+	}
+}
+
 func TestValidateLoginUsesSessionRelyingPartyID(t *testing.T) {
 	parsedResponse, credPubKey, challenge, credentialID := testLoginSpecVectorNoneES256(t)
 
