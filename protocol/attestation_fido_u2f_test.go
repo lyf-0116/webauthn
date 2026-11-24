@@ -144,7 +144,7 @@ func TestVerifyU2FFormat_MetadataIgnoresAAGUID(t *testing.T) {
 	mds.EXPECT().GetEntry(gomock.Any(), uuid.Nil).Return(nil, nil)
 	mds.EXPECT().GetValidateEntryPermitZeroAAGUID(gomock.Any()).Return(true)
 
-	require.NoError(t, att.VerifyAttestation(clientDataHash[:], mds, AttestationPolicy{}, SignaturePolicy{}))
+	require.NoError(t, att.VerifyAttestation(clientDataHash[:], mds, testLegacyAttestationPolicy(), SignaturePolicy{}))
 }
 
 func TestVerifyU2FFormat_CompoundMetadataIgnoresAAGUID(t *testing.T) {
@@ -173,7 +173,7 @@ func TestVerifyU2FFormat_CompoundMetadataIgnoresAAGUID(t *testing.T) {
 	mds.EXPECT().GetEntry(gomock.Any(), claimed).Return(nil, nil)
 	mds.EXPECT().GetValidateEntry(gomock.Any()).Return(false)
 
-	require.NoError(t, compound.VerifyAttestation(clientDataHash[:], mds, AttestationPolicy{}, SignaturePolicy{}))
+	require.NoError(t, compound.VerifyAttestation(clientDataHash[:], mds, testLegacyAttestationPolicy(), SignaturePolicy{}))
 	assert.Equal(t, claimed[:], compound.AuthData.AttData.AAGUID)
 }
 

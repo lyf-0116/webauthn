@@ -90,4 +90,10 @@ func TestAttestationPolicyZeroValue(t *testing.T) {
 
 	assert.Equal(t, CompoundSubStatementScopeDefault, policy.Compound.SubStatementScope)
 	assert.False(t, policy.Compound.SubStatementScope.any())
+
+	assert.False(t, policy.TrustAnchor.allowMissing())
+}
+
+func testLegacyAttestationPolicy() AttestationPolicy {
+	return AttestationPolicy{TrustAnchor: TrustAnchorMissingAllowed}
 }

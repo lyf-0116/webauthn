@@ -159,12 +159,16 @@ type Config struct {
 	// MDS configures a FIDO Metadata Service provider for authenticator trust validation. When set, the library
 	// validates attestation statements against known authenticator metadata including trust anchors, attestation
 	// types, and authenticator status. Use the providers in [github.com/go-webauthn/webauthn/metadata/providers/memory]
-	// or [github.com/go-webauthn/webauthn/metadata/providers/cached] to create a provider instance.
+	// or [github.com/go-webauthn/webauthn/metadata/providers/cached] to create a provider instance. The default
+	// attestation policy requires that this provider validate a trust anchor; set
+	// Attestation.TrustAnchor to [protocol.TrustAnchorMissingAllowed] only for legacy authenticators which cannot
+	// convey one.
 	MDS metadata.Provider
 
 	// Attestation configures Relying Party policy for the verification of attestation statements. These are the
 	// decisions §8 of the specification delegates to the Relying Party rather than fixing. The zero value selects
-	// the most restrictive behavior available for each policy it carries.
+	// the most restrictive behavior available for each policy it carries, including
+	// [protocol.TrustAnchorRequired] for [protocol.AttestationPolicy.TrustAnchor].
 	Attestation protocol.AttestationPolicy
 
 	// Signature configures Relying Party policy for the verification of signatures. It applies to the attestation
@@ -359,6 +363,10 @@ func (config *Config) validateOpaqueOrigins() (err error) {
 // Every default is the most restrictive behavior the policy offers, which for the encoding of a signature is the
 // one the specification requires.
 func (config *Config) validateAttestationPolicy() {
+	if config.Attestation.TrustAnchor == protocol.TrustAnchorPolicyDefault {
+		config.Attestation.TrustAnchor = protocol.TrustAnchorRequired
+	}
+
 	if config.Attestation.AndroidKey.AuthorizationScope == protocol.AndroidKeyAuthorizationScopeDefault {
 		config.Attestation.AndroidKey.AuthorizationScope = protocol.AndroidKeyAuthorizationScopeTEEEnforced
 	}

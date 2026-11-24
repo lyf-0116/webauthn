@@ -216,7 +216,7 @@ func specTestParseAndVerify(t *testing.T, attObjHex, clientDataJSONHex string, c
 
 	clientDataHash := sha256.Sum256(rawClientDataJSON)
 
-	require.NoError(t, att.Verify(specTestRPID, clientDataHash[:], false, true, nil, credParams, AttestationPolicy{}, SignaturePolicy{}))
+	require.NoError(t, att.Verify(specTestRPID, clientDataHash[:], false, true, nil, credParams, testLegacyAttestationPolicy(), SignaturePolicy{}))
 
 	return att
 }

@@ -62,7 +62,7 @@ func TestAttestationVerify(t *testing.T) {
 
 			pcc.Response = *parsedAttestationResponse
 
-			_, err = pcc.Verify(options.Response.Challenge.String(), options.Response.RelyingParty.ID, []string{options.Response.RelyingParty.Name}, nil, nil, TopOriginExplicitVerificationMode, false, false, false, nil, options.Response.Parameters, AttestationPolicy{}, SignaturePolicy{})
+			_, err = pcc.Verify(options.Response.Challenge.String(), options.Response.RelyingParty.ID, []string{options.Response.RelyingParty.Name}, nil, nil, TopOriginExplicitVerificationMode, false, false, false, nil, options.Response.Parameters, testLegacyAttestationPolicy(), SignaturePolicy{})
 
 			require.NoError(t, err)
 		})
@@ -327,7 +327,7 @@ func TestAttestationObject_VerifyAttestation_HandlerErrors(t *testing.T) {
 				AuthData:     tc.authData,
 			}
 
-			err := att.VerifyAttestation([]byte("hash"), nil, AttestationPolicy{}, SignaturePolicy{})
+			err := att.VerifyAttestation([]byte("hash"), nil, testLegacyAttestationPolicy(), SignaturePolicy{})
 
 			if tc.err != "" {
 				require.Error(t, err)

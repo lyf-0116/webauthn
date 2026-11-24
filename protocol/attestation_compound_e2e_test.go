@@ -62,7 +62,7 @@ func TestCompoundAttestation_SpecShapeVerifies(t *testing.T) {
 
 	sum := sha256.Sum256(clientDataJSON)
 
-	require.NoError(t, parsed.AttestationObject.VerifyAttestation(sum[:], nil, AttestationPolicy{}, SignaturePolicy{}))
+	require.NoError(t, parsed.AttestationObject.VerifyAttestation(sum[:], nil, testLegacyAttestationPolicy(), SignaturePolicy{}))
 
 	assert.Equal(t, string(metadata.BasicSurrogate), parsed.AttestationObject.Type)
 }

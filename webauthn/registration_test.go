@@ -890,8 +890,9 @@ func TestCreateCredential_Full(t *testing.T) {
 			userID := []byte(testUserID)
 
 			config := &Config{
-				RPID:      "example.org",
-				RPOrigins: []string{"https://example.org"},
+				Attestation: legacyAttestationPolicy(),
+				RPID:        "example.org",
+				RPOrigins:   []string{"https://example.org"},
 			}
 
 			if tc.have.setup != nil {
@@ -941,8 +942,9 @@ func TestCreateCredentialUsesSessionRelyingPartyID(t *testing.T) {
 
 	w := &WebAuthn{
 		Config: &Config{
-			RPID:      "example.com",
-			RPOrigins: []string{"https://example.org"},
+			Attestation: legacyAttestationPolicy(),
+			RPID:        "example.com",
+			RPOrigins:   []string{"https://example.org"},
 		},
 	}
 
@@ -969,8 +971,9 @@ func TestCreateCredential_RejectsBackupStateWithoutBackupEligibility(t *testing.
 
 	w := &WebAuthn{
 		Config: &Config{
-			RPID:      "example.org",
-			RPOrigins: []string{"https://example.org"},
+			Attestation: legacyAttestationPolicy(),
+			RPID:        "example.org",
+			RPOrigins:   []string{"https://example.org"},
 		},
 	}
 
@@ -1206,8 +1209,9 @@ func TestFinishRegistration_Success(t *testing.T) {
 
 	w := &WebAuthn{
 		Config: &Config{
-			RPID:      "example.org",
-			RPOrigins: []string{"https://example.org"},
+			Attestation: legacyAttestationPolicy(),
+			RPID:        "example.org",
+			RPOrigins:   []string{"https://example.org"},
 		},
 	}
 
@@ -1228,6 +1232,7 @@ func TestFinishRegistration_Success(t *testing.T) {
 	assert.Equal(t, credentialID, credential.ID)
 	assert.Equal(t, "none", credential.AttestationType)
 	assert.Equal(t, "none", credential.AttestationFormat)
+	assert.Equal(t, protocol.AttestationTrustLevelLow, credential.AttestationTrustLevel)
 }
 
 func TestValidateFilteredCredential(t *testing.T) {
@@ -1560,6 +1565,7 @@ func TestCreateCredentialOpaqueOrigin(t *testing.T) {
 
 			w := &WebAuthn{
 				Config: &Config{
+					Attestation:     legacyAttestationPolicy(),
 					RPID:            "example.org",
 					RPOrigins:       []string{"https://example.org"},
 					RPOpaqueOrigins: tc.rpOpaqueOrigins,
@@ -1743,6 +1749,7 @@ func TestCreateCredentialBoundOrigin(t *testing.T) {
 
 			w := &WebAuthn{
 				Config: &Config{
+					Attestation:     legacyAttestationPolicy(),
 					RPID:            "example.org",
 					RPDisplayName:   "Test",
 					RPOrigins:       []string{originVector, originOther},
@@ -1819,7 +1826,7 @@ func testRegistrationSpecVectorPackedSelfES256(t *testing.T) (body []byte, chall
 }
 
 func TestBeginRegistrationOptionError(t *testing.T) {
-	w, err := New(&Config{RPID: "example.com", RPDisplayName: "Test", RPOrigins: []string{"https://example.com"}})
+	w, err := New(&Config{Attestation: legacyAttestationPolicy(), RPID: "example.com", RPDisplayName: "Test", RPOrigins: []string{"https://example.com"}})
 	require.NoError(t, err)
 
 	opt := func(cco *protocol.PublicKeyCredentialCreationOptions) error {
@@ -1854,7 +1861,7 @@ func TestBeginRegistrationEmptyCredentialParameters(t *testing.T) {
 }
 
 func TestBeginRegistration_StoresSessionExtensions(t *testing.T) {
-	w, err := New(&Config{RPID: "example.com", RPDisplayName: "Test", RPOrigins: []string{"https://example.com"}})
+	w, err := New(&Config{Attestation: legacyAttestationPolicy(), RPID: "example.com", RPDisplayName: "Test", RPOrigins: []string{"https://example.com"}})
 	require.NoError(t, err)
 
 	_, session, err := w.BeginRegistration(&defaultUser{id: []byte("1234567890")}, WithExtensions(
@@ -2079,7 +2086,7 @@ func newTestUser(t *testing.T) User {
 func newTestWebAuthn(t *testing.T) *WebAuthn {
 	t.Helper()
 
-	w, err := New(&Config{RPID: "example.com", RPDisplayName: "Test", RPOrigins: []string{"https://example.com"}})
+	w, err := New(&Config{Attestation: legacyAttestationPolicy(), RPID: "example.com", RPDisplayName: "Test", RPOrigins: []string{"https://example.com"}})
 	require.NoError(t, err)
 
 	return w
@@ -2098,8 +2105,9 @@ func newRegistrationFixture(t *testing.T) (w *WebAuthn, session SessionData, res
 
 	w = &WebAuthn{
 		Config: &Config{
-			RPID:      "example.org",
-			RPOrigins: []string{"https://example.org"},
+			Attestation: legacyAttestationPolicy(),
+			RPID:        "example.org",
+			RPOrigins:   []string{"https://example.org"},
 		},
 	}
 

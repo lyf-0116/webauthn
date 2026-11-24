@@ -959,6 +959,26 @@ func TestConfig_Validate_DefaultsCompoundSubStatementScopeToAll(t *testing.T) {
 	}
 }
 
+func TestConfig_Validate_DefaultsTrustAnchorToRequired(t *testing.T) {
+	t.Run("ShouldCoerceDefaultToRequired", func(t *testing.T) {
+		config := &Config{RPID: "example.com", RPOrigins: []string{"https://example.com"}}
+
+		require.NoError(t, config.validate())
+		assert.Equal(t, protocol.TrustAnchorRequired, config.Attestation.TrustAnchor)
+	})
+
+	t.Run("ShouldPreserveMissingAllowed", func(t *testing.T) {
+		config := &Config{
+			RPID:        "example.com",
+			RPOrigins:   []string{"https://example.com"},
+			Attestation: protocol.AttestationPolicy{TrustAnchor: protocol.TrustAnchorMissingAllowed},
+		}
+
+		require.NoError(t, config.validate())
+		assert.Equal(t, protocol.TrustAnchorMissingAllowed, config.Attestation.TrustAnchor)
+	})
+}
+
 func TestConfig_Validate_DefaultsECDSASignatureEncodingToDER(t *testing.T) {
 	testCases := []struct {
 		name     string

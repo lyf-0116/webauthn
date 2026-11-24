@@ -160,7 +160,7 @@ func TestAttestationFormatValidationHandlerCompound(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				att := tc.mutate(base)
 
-				attestationType, x5cs, err := attestationFormatValidationHandlerCompound(att, []byte("clientDataHash"), nil, AttestationPolicy{}, SignaturePolicy{})
+				attestationType, x5cs, err := attestationFormatValidationHandlerCompound(att, []byte("clientDataHash"), nil, testLegacyAttestationPolicy(), SignaturePolicy{})
 				require.Error(t, err)
 				assert.Empty(t, attestationType)
 				assert.Nil(t, x5cs)
@@ -234,7 +234,7 @@ func TestAttestationFormatValidationHandlerCompound(t *testing.T) {
 			},
 		}
 
-		gotType, gotX5Cs, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), nil, AttestationPolicy{}, SignaturePolicy{})
+		gotType, gotX5Cs, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), nil, testLegacyAttestationPolicy(), SignaturePolicy{})
 		require.NoError(t, err)
 
 		// §8.9 returns any combination of the outputs of the successful verification procedures. The type of the
@@ -286,9 +286,12 @@ func TestAttestationFormatValidationHandlerCompound(t *testing.T) {
 			},
 		}
 
-		// A non-zero policy is deliberate: asserting against the zero value would still pass if the forwarding were
-		// replaced by AttestationPolicy{}, which is the exact regression this test exists to catch.
-		policy := AttestationPolicy{AndroidKey: AndroidKeyPolicy{AuthorizationScope: AndroidKeyAuthorizationScopeUnion}}
+		// A non-zero policy is deliberate: asserting against an expected zero-valued policy would still pass if the
+		// forwarding were replaced by a fresh AttestationPolicy, which is the regression this test catches.
+		policy := AttestationPolicy{
+			TrustAnchor: TrustAnchorMissingAllowed,
+			AndroidKey:  AndroidKeyPolicy{AuthorizationScope: AndroidKeyAuthorizationScopeUnion},
+		}
 
 		_, _, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), nil, policy, SignaturePolicy{})
 		require.NoError(t, err)
@@ -318,7 +321,7 @@ func TestAttestationFormatValidationHandlerCompound(t *testing.T) {
 			},
 		}
 
-		_, _, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), nil, AttestationPolicy{}, SignaturePolicy{})
+		_, _, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), nil, testLegacyAttestationPolicy(), SignaturePolicy{})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, subErr))
 	})
@@ -356,7 +359,7 @@ func TestAttestationFormatValidationHandlerCompound(t *testing.T) {
 			},
 		}
 
-		_, _, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), mds, AttestationPolicy{}, SignaturePolicy{})
+		_, _, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), mds, testLegacyAttestationPolicy(), SignaturePolicy{})
 		require.Error(t, err)
 
 		protoErr, ok := err.(*Error)
@@ -391,7 +394,7 @@ func TestAttestationFormatValidationHandlerCompound(t *testing.T) {
 			},
 		}
 
-		gotType, gotX5Cs, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), nil, AttestationPolicy{}, SignaturePolicy{})
+		gotType, gotX5Cs, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), nil, testLegacyAttestationPolicy(), SignaturePolicy{})
 		require.NoError(t, err)
 
 		assert.Equal(t, testAttTypeSome, gotType)
@@ -419,7 +422,7 @@ func TestAttestationFormatValidationHandlerCompound(t *testing.T) {
 			},
 		}
 
-		gotType, _, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), nil, AttestationPolicy{}, SignaturePolicy{})
+		gotType, _, err := attestationFormatValidationHandlerCompound(att, []byte("hash"), nil, testLegacyAttestationPolicy(), SignaturePolicy{})
 		require.NoError(t, err)
 		require.NotEqual(t, stmtTypNone, gotType)
 
@@ -443,8 +446,14 @@ func TestAttestationFormatValidationHandlerCompound(t *testing.T) {
 
 func TestAttestationFormatValidationHandlerCompoundSubStatementScope(t *testing.T) {
 	var (
-		policyAll = AttestationPolicy{Compound: CompoundPolicy{SubStatementScope: CompoundSubStatementScopeAll}}
-		policyAny = AttestationPolicy{Compound: CompoundPolicy{SubStatementScope: CompoundSubStatementScopeAny}}
+		policyAll = AttestationPolicy{
+			TrustAnchor: TrustAnchorMissingAllowed,
+			Compound:    CompoundPolicy{SubStatementScope: CompoundSubStatementScopeAll},
+		}
+		policyAny = AttestationPolicy{
+			TrustAnchor: TrustAnchorMissingAllowed,
+			Compound:    CompoundPolicy{SubStatementScope: CompoundSubStatementScopeAny},
+		}
 	)
 
 	t.Run("ShouldAcceptWhenALaterSubStatementVerifies", func(t *testing.T) {
@@ -689,7 +698,7 @@ func TestCompoundAttestationStatusCertificateScope(t *testing.T) {
 
 			att := compoundScopeTestAttestation(aaguid[:])
 
-			err := att.VerifyAttestation([]byte("hash"), mds, AttestationPolicy{}, SignaturePolicy{})
+			err := att.VerifyAttestation([]byte("hash"), mds, testLegacyAttestationPolicy(), SignaturePolicy{})
 
 			if !tc.err {
 				assert.NoError(t, err)

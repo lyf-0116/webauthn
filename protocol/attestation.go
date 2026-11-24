@@ -91,6 +91,10 @@ type AttestationObject struct {
 	// is empty. This field is excluded from serialization because the attestation object wire format does not carry
 	// this value; it is derived by the format-specific verifier.
 	Type string `json:"-"`
+
+	// TrustLevel records whether the successful attestation was validated against a trust anchor. It is populated
+	// as a side-effect of [AttestationObject.VerifyAttestation] and is not part of the wire format.
+	TrustLevel AttestationTrustLevel `json:"-"`
 }
 
 // attestationObjectEncoded is the wire form of an [AttestationObject], with the attestation statement left undecoded
@@ -290,6 +294,13 @@ func (a *AttestationObject) VerifyAttestation(clientDataHash []byte, mds metadat
 
 		a.Type = string(metadata.None)
 
+		level, policyErr := policy.evaluateTrust(false)
+		if policyErr != nil {
+			return policyErr
+		}
+
+		a.TrustLevel = level
+
 		return nil
 	}
 
@@ -333,17 +344,34 @@ func (a *AttestationObject) VerifyAttestation(clientDataHash []byte, mds metadat
 		}
 	}
 
-	if mds == nil {
-		return nil
-	}
-
 	// The status of a compound attestation is not validated again here as each of its sub-statements was validated
 	// with its own trust path, which a compound attestation does not convey.
 	status := AttestationFormat(a.Format) != AttestationFormatCompound
 
-	if e := validateMetadata(context.Background(), mds, aaguid, a.Type, a.Format, x5cs, &a.AuthData, status); e != nil {
+	var anchored bool
+
+	if e := validateMetadata(context.Background(), mds, aaguid, a.Type, a.Format, x5cs, &a.AuthData, status, &anchored); e != nil {
 		return ErrInvalidAttestation.WithInfo(fmt.Sprintf("Error occurred validating metadata during attestation validation: %+v", e)).WithDetails(e.DevInfo).WithError(e)
 	}
+
+	if AttestationFormat(a.Format) == AttestationFormatCompound {
+		// Compound sub-statements enforce the same trust-anchor policy when they are verified. The outer object has
+		// no single trust path to report, so record only the assurance tier selected by policy.
+		if policy.TrustAnchor.allowMissing() {
+			a.TrustLevel = AttestationTrustLevelLow
+		} else {
+			a.TrustLevel = AttestationTrustLevelHigh
+		}
+
+		return nil
+	}
+
+	level, err := policy.evaluateTrust(anchored)
+	if err != nil {
+		return err
+	}
+
+	a.TrustLevel = level
 
 	return nil
 }

@@ -174,12 +174,14 @@ func compoundVerifySubStatement(att AttestationObject, attStmt NonCompoundAttest
 		return "", err
 	}
 
-	if mds == nil {
-		return attestationType, nil
+	var anchored bool
+
+	if e := validateMetadata(context.Background(), mds, aaguid, attestationType, object.Format, cx5cs, &object.AuthData, true, &anchored); e != nil {
+		return "", ErrInvalidAttestation.WithInfo(fmt.Sprintf("Error occurred validating metadata during attestation validation: %+v", e)).WithDetails(e.DevInfo).WithError(e)
 	}
 
-	if e := ValidateMetadataWithAuthenticatorData(context.Background(), mds, aaguid, attestationType, object.Format, cx5cs, &object.AuthData); e != nil {
-		return "", ErrInvalidAttestation.WithInfo(fmt.Sprintf("Error occurred validating metadata during attestation validation: %+v", e)).WithDetails(e.DevInfo).WithError(e)
+	if _, err = policy.evaluateTrust(anchored); err != nil {
+		return "", err
 	}
 
 	return attestationType, nil

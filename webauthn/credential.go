@@ -22,12 +22,13 @@ import (
 // see the [CredentialAttestation] documentation for why these values must be persisted.
 func NewCredential(clientDataHash []byte, c *protocol.ParsedCredentialCreationData) (credential *Credential, err error) {
 	credential = &Credential{
-		ID:                c.Response.AttestationObject.AuthData.AttData.CredentialID,
-		PublicKey:         c.Response.AttestationObject.AuthData.AttData.CredentialPublicKey,
-		AttestationType:   c.Response.AttestationObject.Type,
-		AttestationFormat: c.Response.AttestationObject.Format,
-		Transport:         c.Response.Transports,
-		Flags:             NewCredentialFlags(c.Response.AttestationObject.AuthData.Flags),
+		ID:                    c.Response.AttestationObject.AuthData.AttData.CredentialID,
+		PublicKey:             c.Response.AttestationObject.AuthData.AttData.CredentialPublicKey,
+		AttestationType:       c.Response.AttestationObject.Type,
+		AttestationFormat:     c.Response.AttestationObject.Format,
+		AttestationTrustLevel: c.Response.AttestationObject.TrustLevel,
+		Transport:             c.Response.Transports,
+		Flags:                 NewCredentialFlags(c.Response.AttestationObject.AuthData.Flags),
 		Authenticator: Authenticator{
 			AAGUID:     c.Response.AttestationObject.AuthData.AttData.AAGUID,
 			SignCount:  c.Response.AttestationObject.AuthData.Counter,
@@ -127,6 +128,11 @@ type Credential struct {
 	// "android-safetynet", "fido-u2f", "apple", "compound", "none"); see §8 of the WebAuthn specification and
 	// the AttestationFormat constants in the protocol package.
 	AttestationFormat string `json:"attestationFormat,omitempty" msg:"attfmt,omitempty"`
+
+	// AttestationTrustLevel marks whether the registration attestation was validated against a trust anchor. It is
+	// populated in memory by registration and [Credential.Verify]; it is not serialized because the raw
+	// attestation object can be re-verified under the current policy.
+	AttestationTrustLevel protocol.AttestationTrustLevel `json:"-" msg:"-"`
 
 	// Transport types the authenticator supports. Described by the Credential Record 'transports' field.
 	Transport []protocol.AuthenticatorTransport `json:"transport,omitempty" msg:"t,omitempty"`
@@ -300,6 +306,8 @@ func (c *Credential) Verify(mds metadata.Provider, policy protocol.AttestationPo
 		c.AttestationType = attestation.AttestationObject.Type
 	}
 
+	c.AttestationTrustLevel = attestation.AttestationObject.TrustLevel
+
 	return nil
 }
 
@@ -339,6 +347,7 @@ func (c *Credential) VerifyAttestationType(policy protocol.AttestationPolicy, si
 	}
 
 	c.AttestationType = attestation.AttestationObject.Type
+	c.AttestationTrustLevel = attestation.AttestationObject.TrustLevel
 
 	return nil
 }

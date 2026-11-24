@@ -39,11 +39,11 @@ func ValidateMetadata(ctx context.Context, mds metadata.Provider, aaguid uuid.UU
 // compound attestation. When no x5cs are provided, such as for a stored credential during login, the status reports
 // are not scoped to a certificate so all of them apply.
 func ValidateMetadataWithAuthenticatorData(ctx context.Context, mds metadata.Provider, aaguid uuid.UUID, attestationType, attestationFormat string, x5cs []any, authData *AuthenticatorData) (protoErr *Error) {
-	return validateMetadata(ctx, mds, aaguid, attestationType, attestationFormat, x5cs, authData, true)
+	return validateMetadata(ctx, mds, aaguid, attestationType, attestationFormat, x5cs, authData, true, nil)
 }
 
 //nolint:gocyclo
-func validateMetadata(ctx context.Context, mds metadata.Provider, aaguid uuid.UUID, attestationType, attestationFormat string, x5cs []any, authData *AuthenticatorData, status bool) (protoErr *Error) {
+func validateMetadata(ctx context.Context, mds metadata.Provider, aaguid uuid.UUID, attestationType, attestationFormat string, x5cs []any, authData *AuthenticatorData, status bool, anchored *bool) (protoErr *Error) {
 	if mds == nil {
 		return nil
 	}
@@ -152,6 +152,10 @@ func validateMetadata(ctx context.Context, mds metadata.Provider, aaguid uuid.UU
 
 			if chains, err = x5c.Verify(entry.MetadataStatement.Verifier(x5cis)); err != nil {
 				return ErrMetadata.WithDetails(fmt.Sprintf("Failed to validate attestation statement signature during attestation validation for Authenticator Attestation GUID '%s'. The attestation certificate could not be verified due to an error validating the trust chain against the Metadata Service.", aaguid)).WithError(err)
+			}
+
+			if anchored != nil {
+				*anchored = true
 			}
 		}
 	}

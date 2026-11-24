@@ -9,6 +9,10 @@ import (
 	"github.com/go-webauthn/webauthn/protocol"
 )
 
+func legacyAttestationPolicy() protocol.AttestationPolicy {
+	return protocol.AttestationPolicy{TrustAnchor: protocol.TrustAnchorMissingAllowed}
+}
+
 func TestIsByteArrayInSlice(t *testing.T) {
 	testCases := []struct {
 		name     string

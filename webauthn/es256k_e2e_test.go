@@ -37,7 +37,9 @@ func TestES256KCeremoniesEndToEnd(t *testing.T) {
 
 	require.NoError(t, err)
 
-	w := &WebAuthn{Config: &Config{RPID: testES256KRPID, RPOrigins: []string{testES256KOrigin}}}
+	w := &WebAuthn{Config: &Config{
+		Attestation: legacyAttestationPolicy(),
+		RPID:        testES256KRPID, RPOrigins: []string{testES256KOrigin}}}
 
 	userID := []byte(testUserID)
 	credentialID := []byte("es256k-credential-identifier-000")
@@ -134,7 +136,9 @@ func TestES256KWithPackedBasicAttestation(t *testing.T) {
 
 	require.NoError(t, err)
 
-	w := &WebAuthn{Config: &Config{RPID: testES256KRPID, RPOrigins: []string{testES256KOrigin}}}
+	w := &WebAuthn{Config: &Config{
+		Attestation: legacyAttestationPolicy(),
+		RPID:        testES256KRPID, RPOrigins: []string{testES256KOrigin}}}
 
 	userID := []byte(testUserID)
 	credentialID := []byte("es256k-credential-identifier-001")

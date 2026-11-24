@@ -272,7 +272,7 @@ func TestSpecVectors_Registration_E2E(t *testing.T) {
 
 			challenge := base64.RawURLEncoding.EncodeToString(specTestDecodeHex(t, tc.challenge))
 
-			_, err = pcc.Verify(challenge, specTestRPID, []string{specTestOrigin}, nil, tc.rpTopOrigins, tc.rpTopOriginVerificationMode, tc.allowCrossOrigin, false, true, tc.mds, tc.credParams, AttestationPolicy{}, SignaturePolicy{})
+			_, err = pcc.Verify(challenge, specTestRPID, []string{specTestOrigin}, nil, tc.rpTopOrigins, tc.rpTopOriginVerificationMode, tc.allowCrossOrigin, false, true, tc.mds, tc.credParams, testLegacyAttestationPolicy(), SignaturePolicy{})
 
 			if tc.err == "" {
 				assert.NoError(t, err)

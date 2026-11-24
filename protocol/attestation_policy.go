@@ -4,12 +4,67 @@ package protocol
 // Relying Party rather than fixing. The zero value selects the most restrictive behavior available for each
 // policy it carries.
 type AttestationPolicy struct {
+	// TrustAnchor configures whether an attestation statement must convey a trust path which can be validated
+	// against a trusted anchor. Its zero value selects [TrustAnchorRequired], so an unset policy fails closed.
+	TrustAnchor TrustAnchorPolicy
+
 	// AndroidKey configures the Android Key Attestation Statement Format verification procedure.
 	AndroidKey AndroidKeyPolicy
 
 	// Compound configures the Compound Attestation Statement Format verification procedure.
 	Compound CompoundPolicy
 }
+
+// TrustAnchorPolicy selects how attestation verification handles a statement for which no trusted anchor can be
+// established.
+type TrustAnchorPolicy int
+
+const (
+	// TrustAnchorPolicyDefault is the zero value of [TrustAnchorPolicy]. It evaluates as
+	// [TrustAnchorRequired] wherever the policy is used.
+	TrustAnchorPolicyDefault TrustAnchorPolicy = iota
+
+	// TrustAnchorRequired rejects an attestation unless its format verifier conveys a trust path and the metadata
+	// provider validates that path against a trust anchor.
+	TrustAnchorRequired
+
+	// TrustAnchorMissingAllowed accepts an attestation which has no validated trust anchor. Such an attestation is
+	// marked [AttestationTrustLevelLow]; this is the compatibility tier for legacy authenticators which only use
+	// self attestation or otherwise omit an anchor.
+	TrustAnchorMissingAllowed
+)
+
+// allowMissing returns true only for the explicit compatibility policy. The zero value and every unknown value
+// fail closed by requiring an anchor.
+func (p TrustAnchorPolicy) allowMissing() bool {
+	return p == TrustAnchorMissingAllowed
+}
+
+// evaluateTrust maps the result of trust-anchor validation to either a marked trust level or the policy error for
+// an unanchored attestation. A validated anchor is always high trust, including when the compatibility policy is set.
+func (p AttestationPolicy) evaluateTrust(anchored bool) (AttestationTrustLevel, error) {
+	if anchored {
+		return AttestationTrustLevelHigh, nil
+	}
+
+	if p.TrustAnchor.allowMissing() {
+		return AttestationTrustLevelLow, nil
+	}
+
+	return "", ErrPolicyRestriction.WithDetails("Attestation verification did not produce a trust anchor accepted by policy").
+		WithInfo("Set Attestation.TrustAnchor to TrustAnchorMissingAllowed to accept legacy authenticators without a validated anchor")
+}
+
+// AttestationTrustLevel records whether a successfully verified attestation is anchored to a trusted source.
+type AttestationTrustLevel string
+
+const (
+	// AttestationTrustLevelLow marks a signature-valid attestation for which no trust anchor was validated.
+	AttestationTrustLevelLow AttestationTrustLevel = "low"
+
+	// AttestationTrustLevelHigh marks an attestation whose trust path was validated against a trust anchor.
+	AttestationTrustLevelHigh AttestationTrustLevel = "high"
+)
 
 // AndroidKeyPolicy configures the Android Key Attestation Statement Format verification procedure.
 //

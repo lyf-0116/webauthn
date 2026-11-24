@@ -240,7 +240,9 @@ func TestMLDSACeremoniesEndToEnd(t *testing.T) {
 func mldsaRegistrationCeremony(t *testing.T, vector mldsaRegistrationVector) (w *WebAuthn, user User, session SessionData, response *protocol.ParsedCredentialCreationData) {
 	t.Helper()
 
-	w = &WebAuthn{Config: &Config{RPID: testMLDSARPID, RPOrigins: []string{testMLDSAOrigin}}}
+	w = &WebAuthn{Config: &Config{
+		Attestation: legacyAttestationPolicy(),
+		RPID:        testMLDSARPID, RPOrigins: []string{testMLDSAOrigin}}}
 
 	userID := []byte(testMLDSAUserHandle)
 
