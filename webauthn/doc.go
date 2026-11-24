@@ -215,6 +215,15 @@
 //	CREATE UNIQUE INDEX webauthn_credentials_kid_key ON webauthn_credentials (rpid, kid);
 //	CREATE        INDEX webauthn_credentials_user_id ON webauthn_credentials (rpid, user_id);
 //
+// The unique index on (rpid, kid) is the authoritative enforcement of credential ownership uniqueness: without it
+// the same authenticator can be attached to two accounts, after which either account's login succeeds with the one
+// credential, and a read-before-write check cannot close that window under concurrent registrations. The library
+// performs the read side of this check in [WebAuthn.CreateCredential] by rejecting a credential ID already owned by
+// the user completing the ceremony and, when [Config.CredentialStore] is set, an ID already registered to any other
+// user of this Relying Party; implement [CredentialStore] against the same store the index protects and translate
+// the index's duplicate-key failure on write into [ErrCredentialIDAlreadyRegistered] so races are rejected at the
+// persistence boundary as well.
+//
 // With that shape, the two login lookup paths resolve as:
 //
 //   - Credential-ID-first (allowCredentials flows): match `webauthn_credentials.kid` to the credential ID

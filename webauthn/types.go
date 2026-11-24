@@ -176,6 +176,14 @@ type Config struct {
 	// policy on the authenticators that are available to be registered with the Relying Party.
 	Filtering *FilteringConfig
 
+	// CredentialStore optionally configures the store consulted during registration to ensure a credential ID is
+	// not already registered to another user of this Relying Party. When nil, [WebAuthn.CreateCredential] only
+	// rejects a credential ID that duplicates one already owned by the user completing the ceremony and cannot
+	// observe credentials owned by other users. The store is a read-before-write check, so a unique index on the
+	// (RP ID, credential ID) columns remains required to reject concurrent registrations atomically; see the
+	// [CredentialStore] documentation and the Storage section of the package documentation.
+	CredentialStore CredentialStore
+
 	// ExtensionsUnsolicitedOutputPolicy determines how a client extension output that was not requested by this
 	// Relying Party is handled during the finish step of a ceremony. The zero value
 	// ([protocol.UnsolicitedOutputPolicyReject]) fails the ceremony, which is the recommended setting. Set

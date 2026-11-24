@@ -258,6 +258,17 @@ func (webauthn *WebAuthn) CreateCredential(user User, session SessionData, parse
 		return nil, err
 	}
 
+	// Specification: §7.1. Registering a New Credential, step 17 (https://www.w3.org/TR/webauthn-3/#sctn-registering-a-new-credential)
+	//
+	// A valid signature and challenge only prove this handshake is genuine; they do not prove the credential ID is
+	// unoccupied. Reject registrations whose credential ID is already in use before returning the [Credential] for
+	// persistence, otherwise the same authenticator can be attached to a second account and used to authenticate as
+	// the first account's user. The same-user check needs no storage integration, while the Relying Party wide check
+	// runs only when a [CredentialStore] is configured.
+	if err = validateCredentialIDUnregistered(credential.ID, user, config.CredentialStore); err != nil {
+		return nil, err
+	}
+
 	// An authenticator which does not support credBlob ignores it rather than reporting that it did not store the
 	// blob, so for a requested blob the absence of an outcome is recorded as not stored.
 	if session.Extensions.CredBlob && credential.Extensions.CredBlobSet == nil {

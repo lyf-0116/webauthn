@@ -231,8 +231,10 @@ func (pcc *ParsedCredentialCreationData) Verify(storedChallenge string, relyingP
 	// fail this registration ceremony, or it MAY decide to accept the registration, i.e. while deleting
 	// the older registration.
 
-	// TODO: We can't support this in the code's current form, the Relying Party would need to check for this
-	// against their database.
+	// This check is performed by the webauthn package after verification in WebAuthn.CreateCredential: it rejects
+	// credential IDs already owned by the registering user and, when a CredentialStore is configured, IDs already
+	// registered to any other user. The Relying Party still needs a unique index on the persisted (RP ID,
+	// credential ID) columns so concurrent registrations cannot both be written.
 
 	// Step 18 If the attestation statement attStmt verified successfully and is found to be trustworthy, then
 	// register the new credential with the account that was denoted in the options.user passed to create(), by
