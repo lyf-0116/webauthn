@@ -14,6 +14,7 @@ import (
 
 //msgp:replace protocol.AuthenticatorTransport with:string
 //msgp:replace protocol.CredentialProtectionPolicy with:string
+//msgp:replace protocol.UserVerificationRequirement with:string
 //msgp:shim CredentialFlags as:byte using:(CredentialFlags).MsgpByte/CredentialFlagsFromMsgpByte
 //msgp:clearomitted
 
@@ -133,6 +134,17 @@ type Credential struct {
 
 	// Flags represent the commonly stored flags.
 	Flags CredentialFlags `json:"flags" msg:"flg"`
+
+	// RegistrationUserVerification records the user verification requirement of the registration ceremony which
+	// created this credential. It is the Relying Party's historical requirement, whereas [CredentialFlags.UserVerified]
+	// records the latched uvInitialized state. Login validation treats either a required registration promise or a
+	// latched verified flag as requiring the current assertion to set UV, preventing a per-request session override
+	// from weakening the credential's historical security posture.
+	//
+	// Records persisted before this field existed leave it empty. Validation conservatively falls back to
+	// [CredentialFlags.UserVerified]; deployments which require an explicit promise for every record should reject
+	// empty values when loading credentials and re-register those credentials.
+	RegistrationUserVerification protocol.UserVerificationRequirement `json:"registrationUserVerification,omitempty" msg:"ruv,omitempty"`
 
 	// The Authenticator information for a given Credential.
 	Authenticator Authenticator `json:"authenticator" msg:"a"`
@@ -390,6 +402,18 @@ func NewCredentialFlags(flags protocol.AuthenticatorFlags) CredentialFlags {
 		BackupState:    flags.HasBackupState(),
 		raw:            flags,
 	}
+}
+
+// HistoricalUserVerificationRequired reports whether the credential record commits future logins to checking the
+// current assertion's UV flag. A required registration requirement is an explicit commitment, and a latched
+// [CredentialFlags.UserVerified] value is the uvInitialized state for records which predate
+// [Credential.RegistrationUserVerification].
+//
+// An empty registration requirement with UV not latched represents either a deliberately non-required ceremony or a
+// legacy record with no stored commitment. Relying parties which need every legacy record to fail closed should
+// reject that empty combination when loading credentials and require re-registration.
+func (c Credential) HistoricalUserVerificationRequired() bool {
+	return c.RegistrationUserVerification == protocol.VerificationRequired || c.Flags.UserVerified
 }
 
 // Update returns these flags advanced to the state observed during a successful assertion, which is the credential

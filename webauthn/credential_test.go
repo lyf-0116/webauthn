@@ -1061,9 +1061,10 @@ func TestCredential_RoundTripJSON(t *testing.T) {
 	// Marshal -> Unmarshal produces an equivalent record (no lossy migration applied to a record already carrying
 	// both fields).
 	original := Credential{
-		ID:                []byte("cred-id"),
-		AttestationType:   "basic_surrogate",
-		AttestationFormat: "packed",
+		ID:                           []byte("cred-id"),
+		AttestationType:              "basic_surrogate",
+		AttestationFormat:            "packed",
+		RegistrationUserVerification: protocol.VerificationRequired,
 	}
 
 	data, err := json.Marshal(original)
@@ -1074,6 +1075,7 @@ func TestCredential_RoundTripJSON(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &round))
 	assert.Equal(t, original.AttestationType, round.AttestationType)
 	assert.Equal(t, original.AttestationFormat, round.AttestationFormat)
+	assert.Equal(t, original.RegistrationUserVerification, round.RegistrationUserVerification)
 }
 
 func TestCredential_Descriptor_PopulatesBothFields(t *testing.T) {
@@ -1314,12 +1316,13 @@ func TestCredentials_MsgpRoundTrip(t *testing.T) {
 
 func newPopulatedCredential() Credential {
 	return Credential{
-		ID:                []byte{0x01, 0x02, 0x03, 0x04},
-		PublicKey:         []byte{0xa5, 0x01, 0x02, 0x03, 0x26},
-		AttestationType:   "basic_full",
-		AttestationFormat: "packed",
-		Transport:         []protocol.AuthenticatorTransport{protocol.USB, protocol.NFC, protocol.Hybrid},
-		Flags:             NewCredentialFlags(protocol.FlagUserPresent | protocol.FlagUserVerified | protocol.FlagBackupEligible),
+		ID:                           []byte{0x01, 0x02, 0x03, 0x04},
+		PublicKey:                    []byte{0xa5, 0x01, 0x02, 0x03, 0x26},
+		AttestationType:              "basic_full",
+		AttestationFormat:            "packed",
+		Transport:                    []protocol.AuthenticatorTransport{protocol.USB, protocol.NFC, protocol.Hybrid},
+		Flags:                        NewCredentialFlags(protocol.FlagUserPresent | protocol.FlagUserVerified | protocol.FlagBackupEligible),
+		RegistrationUserVerification: protocol.VerificationRequired,
 		Authenticator: Authenticator{
 			AAGUID:       bytes.Repeat([]byte{0x11}, 16),
 			SignCount:    42,

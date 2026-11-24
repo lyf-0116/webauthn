@@ -668,6 +668,20 @@ sign (U+212A) in place of `K` match the same host spelled with `k`, which no cli
 of an internationalized domain in its ASCII form, so the origins you configure for one must use the A-label, such as
 `https://xn--bcher-kva.example` rather than `https://bücher.example`.
 
+### 2.14 Login UV checks the credential's historical commitment
+
+`ParsedCredentialAssertionData.Verify` now takes a second user-verification boolean between the session requirement and
+the user-presence requirement: `verifyCredentialUser`. Pass the credential's historical requirement there. The protocol
+layer requires the assertion's UV flag when either boolean is true, so a login session opened with
+`UserVerificationDiscouraged` cannot bypass a credential already recorded as user-verified or registered with
+`VerificationRequired`.
+
+`Credential` now records the registration ceremony's `userVerification` value in
+`RegistrationUserVerification` (JSON `registrationUserVerification`, MessagePack `ruv`). New credentials populate it in
+`CreateCredential`. Existing records without the field fall back to `Flags.UserVerified`; deployments that need an
+explicit promise for every record should treat an empty `RegistrationUserVerification` as a reason to require
+re-registration.
+
 ---
 
 ## 3. Stored data

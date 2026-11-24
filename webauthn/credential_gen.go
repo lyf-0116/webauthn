@@ -17,7 +17,7 @@ func (z *Credential) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 4 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -87,6 +87,17 @@ func (z *Credential) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Flags = CredentialFlagsFromMsgpByte(zb0004)
 			}
+		case "ruv":
+			{
+				var zb0005 string
+				zb0005, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "RegistrationUserVerification")
+					return
+				}
+				z.RegistrationUserVerification = protocol.UserVerificationRequirement(zb0005)
+			}
+			zb0001Mask |= 0x8
 		case "a":
 			err = z.Authenticator.DecodeMsg(dc)
 			if err != nil {
@@ -105,7 +116,7 @@ func (z *Credential) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Extensions")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -115,7 +126,7 @@ func (z *Credential) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xf {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.AttestationType = ""
 		}
@@ -126,6 +137,9 @@ func (z *Credential) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.Transport = nil
 		}
 		if (zb0001Mask & 0x8) == 0 {
+			z.RegistrationUserVerification = ""
+		}
+		if (zb0001Mask & 0x10) == 0 {
 			z.Extensions = CredentialExtensions{}
 		}
 	}
@@ -135,8 +149,8 @@ func (z *Credential) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *Credential) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(9)
-	var zb0001Mask uint16 /* 9 bits */
+	zb0001Len := uint32(10)
+	var zb0001Mask uint16 /* 10 bits */
 	_ = zb0001Mask
 	if z.AttestationType == "" {
 		zb0001Len--
@@ -149,6 +163,10 @@ func (z *Credential) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.Transport == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10
+	}
+	if z.RegistrationUserVerification == "" {
+		zb0001Len--
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -231,6 +249,18 @@ func (z *Credential) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Flags")
 			return
 		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "ruv"
+			err = en.Append(0xa3, 0x72, 0x75, 0x76)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(string(z.RegistrationUserVerification))
+			if err != nil {
+				err = msgp.WrapError(err, "RegistrationUserVerification")
+				return
+			}
+		}
 		// write "a"
 		err = en.Append(0xa1, 0x61)
 		if err != nil {
@@ -269,8 +299,8 @@ func (z *Credential) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *Credential) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(9)
-	var zb0001Mask uint16 /* 9 bits */
+	zb0001Len := uint32(10)
+	var zb0001Mask uint16 /* 10 bits */
 	_ = zb0001Mask
 	if z.AttestationType == "" {
 		zb0001Len--
@@ -283,6 +313,10 @@ func (z *Credential) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.Transport == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10
+	}
+	if z.RegistrationUserVerification == "" {
+		zb0001Len--
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -316,6 +350,11 @@ func (z *Credential) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "flg"
 		o = append(o, 0xa3, 0x66, 0x6c, 0x67)
 		o = msgp.AppendByte(o, (CredentialFlags).MsgpByte(z.Flags))
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "ruv"
+			o = append(o, 0xa3, 0x72, 0x75, 0x76)
+			o = msgp.AppendString(o, string(z.RegistrationUserVerification))
+		}
 		// string "a"
 		o = append(o, 0xa1, 0x61)
 		o, err = z.Authenticator.MarshalMsg(o)
@@ -351,7 +390,7 @@ func (z *Credential) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 4 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -421,6 +460,17 @@ func (z *Credential) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Flags = CredentialFlagsFromMsgpByte(zb0004)
 			}
+		case "ruv":
+			{
+				var zb0005 string
+				zb0005, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "RegistrationUserVerification")
+					return
+				}
+				z.RegistrationUserVerification = protocol.UserVerificationRequirement(zb0005)
+			}
+			zb0001Mask |= 0x8
 		case "a":
 			bts, err = z.Authenticator.UnmarshalMsg(bts)
 			if err != nil {
@@ -439,7 +489,7 @@ func (z *Credential) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Extensions")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -449,7 +499,7 @@ func (z *Credential) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xf {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.AttestationType = ""
 		}
@@ -460,6 +510,9 @@ func (z *Credential) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.Transport = nil
 		}
 		if (zb0001Mask & 0x8) == 0 {
+			z.RegistrationUserVerification = ""
+		}
+		if (zb0001Mask & 0x10) == 0 {
 			z.Extensions = CredentialExtensions{}
 		}
 	}
@@ -473,7 +526,7 @@ func (z *Credential) Msgsize() (s int) {
 	for za0001 := range z.Transport {
 		s += msgp.StringPrefixSize + len(string(z.Transport[za0001]))
 	}
-	s += 4 + msgp.ByteSize + 2 + z.Authenticator.Msgsize() + 4 + z.Attestation.Msgsize() + 4 + z.Extensions.Msgsize()
+	s += 4 + msgp.ByteSize + 4 + msgp.StringPrefixSize + len(string(z.RegistrationUserVerification)) + 2 + z.Authenticator.Msgsize() + 4 + z.Attestation.Msgsize() + 4 + z.Extensions.Msgsize()
 	return
 }
 

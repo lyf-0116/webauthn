@@ -421,6 +421,7 @@ func validateLogin(config *Config, user User, session SessionData, parsedRespons
 	}
 
 	shouldVerifyUser := session.UserVerification == protocol.VerificationRequired
+	shouldVerifyCredentialUser := credential.HistoricalUserVerificationRequired()
 	shouldVerifyUserPresence := true
 
 	rpID := session.GetRelyingPartyID(config.RPID)
@@ -433,7 +434,7 @@ func validateLogin(config *Config, user User, session SessionData, parsedRespons
 	}
 
 	// Handle steps 4 through 16.
-	if err = parsedResponse.Verify(session.Challenge, rpID, appID, rpOrigins, rpOpaqueOrigins, rpTopOrigins, config.RPTopOriginVerificationMode, config.RPAllowCrossOrigin, shouldVerifyUser, shouldVerifyUserPresence, credential.PublicKey, config.Signature); err != nil {
+	if err = parsedResponse.Verify(session.Challenge, rpID, appID, rpOrigins, rpOpaqueOrigins, rpTopOrigins, config.RPTopOriginVerificationMode, config.RPAllowCrossOrigin, shouldVerifyUser, shouldVerifyCredentialUser, shouldVerifyUserPresence, credential.PublicKey, config.Signature); err != nil {
 		return nil, err
 	}
 

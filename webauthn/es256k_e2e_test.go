@@ -125,6 +125,115 @@ func TestES256KCeremoniesEndToEnd(t *testing.T) {
 	})
 }
 
+func TestValidateLoginHistoricalUserVerification(t *testing.T) {
+	private, err := secp256k1.GeneratePrivateKey()
+	require.NoError(t, err)
+
+	userID := []byte(testUserID)
+	credentialID := []byte("historical-uv-credential-0001")
+	credentialPublicKey := testES256KCredentialPublicKey(t, private)
+
+	webauthn := &WebAuthn{Config: &Config{RPID: testES256KRPID, RPOrigins: []string{testES256KOrigin}}}
+
+	testCases := []struct {
+		name                    string
+		registrationRequirement protocol.UserVerificationRequirement
+		storedUserVerified      bool
+		sessionRequirement      protocol.UserVerificationRequirement
+		assertionVerified       bool
+		wantErr                 string
+	}{
+		{
+			name:                    "RegistrationRequiredKeepsUVRequiredWhenSessionDiscouraged",
+			registrationRequirement: protocol.VerificationRequired,
+			storedUserVerified:      true,
+			sessionRequirement:      protocol.VerificationDiscouraged,
+			assertionVerified:       false,
+			wantErr:                 "Error validating the authenticator response",
+		},
+		{
+			name:               "StoredUVKeepsUVRequiredForLegacyRecord",
+			storedUserVerified: true,
+			sessionRequirement: protocol.VerificationDiscouraged,
+			assertionVerified:  false,
+			wantErr:            "Error validating the authenticator response",
+		},
+		{
+			name:                    "HistoricalRequirementPassesWithCurrentUV",
+			registrationRequirement: protocol.VerificationRequired,
+			storedUserVerified:      true,
+			sessionRequirement:      protocol.VerificationDiscouraged,
+			assertionVerified:       true,
+		},
+		{
+			name:               "SessionRequiredRejectsMissingUV",
+			sessionRequirement: protocol.VerificationRequired,
+			assertionVerified:  false,
+			wantErr:            "Error validating the authenticator response",
+		},
+		{
+			name:               "NoRequirementAcceptsUserPresenceOnly",
+			sessionRequirement: protocol.VerificationDiscouraged,
+			assertionVerified:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			challenge := base64.RawURLEncoding.EncodeToString([]byte("historical-uv-challenge-000001"))
+
+			flags := protocol.FlagUserPresent
+			if tc.assertionVerified {
+				flags |= protocol.FlagUserVerified
+			}
+
+			authData := testES256KAuthenticatorData(t, flags, 1, nil)
+			clientDataJSON := testES256KClientDataJSON(t, "webauthn.get", challenge)
+			signature := testES256KSign(t, private, authData, clientDataJSON)
+
+			parsedAssertion, err := protocol.ParseCredentialRequestResponseBytes(
+				testES256KAssertionBody(t, credentialID, authData, clientDataJSON, signature),
+			)
+			require.NoError(t, err)
+
+			user := &defaultUser{
+				id: userID,
+				credentials: []Credential{
+					{
+						ID:                           credentialID,
+						PublicKey:                    credentialPublicKey,
+						RegistrationUserVerification: tc.registrationRequirement,
+						Flags:                        CredentialFlags{UserVerified: tc.storedUserVerified},
+					},
+				},
+			}
+
+			session := SessionData{
+				UserID:           userID,
+				Challenge:        challenge,
+				UserVerification: tc.sessionRequirement,
+			}
+
+			credential, err := webauthn.ValidateLogin(user, session, parsedAssertion)
+
+			if tc.wantErr != "" {
+				require.Nil(t, credential)
+				require.EqualError(t, err, tc.wantErr)
+
+				var protocolErr *protocol.Error
+				require.ErrorAs(t, err, &protocolErr)
+				assert.Contains(t, protocolErr.DevInfo, "User verification required but flag not set")
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, credential)
+			assert.Equal(t, credentialID, credential.ID)
+		})
+	}
+}
+
 func TestES256KWithPackedBasicAttestation(t *testing.T) {
 	credentialKey, err := secp256k1.GeneratePrivateKey()
 

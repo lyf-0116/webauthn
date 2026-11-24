@@ -1669,7 +1669,7 @@ func TestValidateLoginAppIDFromSessionReplacesRPID(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("RP Hash mismatch. Expected %x and Received %x", appIDHash, parsedResponse.Response.AuthenticatorData.RPIDHash), e.DevInfo)
 }
 
-func TestValidateLoginLatchesUserVerified(t *testing.T) {
+func TestValidateLoginRejectsHistoricallyVerifiedCredentialWithoutCurrentUV(t *testing.T) {
 	parsedResponse, credPubKey, challenge, credentialID := testLoginSpecVectorNoneES256(t)
 
 	require.False(t, parsedResponse.Response.AuthenticatorData.Flags.HasUserVerified())
@@ -1701,12 +1701,12 @@ func TestValidateLoginLatchesUserVerified(t *testing.T) {
 	}
 
 	credential, err := webauthn.ValidateLogin(user, session, parsedResponse)
-	require.NoError(t, err)
-	require.NotNil(t, credential)
+	require.Nil(t, credential)
+	require.EqualError(t, err, "Error validating the authenticator response")
 
-	assert.True(t, credential.Flags.UserVerified)
-	assert.True(t, credential.Flags.ProtocolValue().HasUserVerified())
-	assert.True(t, credential.Flags.BackupState)
+	var protocolErr *protocol.Error
+	require.ErrorAs(t, err, &protocolErr)
+	assert.Contains(t, protocolErr.DevInfo, "User verification required but flag not set")
 }
 
 func TestValidateLoginUsesSessionRelyingPartyID(t *testing.T) {

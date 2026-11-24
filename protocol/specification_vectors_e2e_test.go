@@ -529,7 +529,7 @@ func TestSpecVectors_Authentication_E2E(t *testing.T) {
 			challenge := base64.RawURLEncoding.EncodeToString(specTestDecodeHex(t, tc.challenge))
 			credPubKey := specTestDecodeHex(t, tc.credentialPubKey)
 
-			err = par.Verify(challenge, specTestRPID, tc.appID, []string{specTestOrigin}, nil, tc.rpTopOrigins, tc.rpTopOriginVerificationMode, tc.allowCrossOrigin, false, true, credPubKey, SignaturePolicy{})
+			err = par.Verify(challenge, specTestRPID, tc.appID, []string{specTestOrigin}, nil, tc.rpTopOrigins, tc.rpTopOriginVerificationMode, tc.allowCrossOrigin, false, false, true, credPubKey, SignaturePolicy{})
 
 			if tc.err == "" {
 				assert.NoError(t, err)

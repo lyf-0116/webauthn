@@ -389,13 +389,43 @@ func TestParsedCredentialAssertionData_Verify(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := par.Verify(tc.challenge, tc.relyingPartyID, tc.appID, tc.rpOrigins, nil, nil, TopOriginExplicitVerificationMode, false, false, true, tc.credentialBytes, SignaturePolicy{})
+			err := par.Verify(tc.challenge, tc.relyingPartyID, tc.appID, tc.rpOrigins, nil, nil, TopOriginExplicitVerificationMode, false, false, false, true, tc.credentialBytes, SignaturePolicy{})
 
 			if tc.err == "" {
 				assert.NoError(t, err)
 			} else {
 				assert.EqualError(t, err, tc.err)
 			}
+		})
+	}
+}
+
+func TestParsedCredentialAssertionData_VerifyUserVerificationRequirements(t *testing.T) {
+	par, credPubKey, challenge := testAssertionSpecVectorNoneES256(t)
+
+	verify := func(sessionRequired, credentialRequired bool) error {
+		return par.Verify(challenge, "example.org", "", []string{"https://example.org"}, nil, nil, TopOriginExplicitVerificationMode, false, sessionRequired, credentialRequired, true, credPubKey, SignaturePolicy{})
+	}
+
+	require.False(t, par.Response.AuthenticatorData.Flags.HasUserVerified())
+	require.NoError(t, verify(false, false))
+
+	for _, tc := range []struct {
+		name               string
+		sessionRequired    bool
+		credentialRequired bool
+	}{
+		{name: "SessionRequirement", sessionRequired: true},
+		{name: "CredentialRequirement", credentialRequired: true},
+		{name: "BothRequirements", sessionRequired: true, credentialRequired: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := verify(tc.sessionRequired, tc.credentialRequired)
+			require.EqualError(t, err, "Error validating the authenticator response")
+
+			var protocolErr *Error
+			require.ErrorAs(t, err, &protocolErr)
+			assert.Contains(t, protocolErr.DevInfo, "User verification required but flag not set")
 		})
 	}
 }
@@ -419,7 +449,7 @@ func TestParsedCredentialAssertionData_VerifyDoesNotWriteBeyondAuthenticatorData
 
 	par.Raw.AssertionResponse.AuthenticatorData = buf
 
-	require.NoError(t, par.Verify(challenge, "example.org", "", []string{"https://example.org"}, nil, nil, TopOriginExplicitVerificationMode, false, false, true, credPubKey, SignaturePolicy{}))
+	require.NoError(t, par.Verify(challenge, "example.org", "", []string{"https://example.org"}, nil, nil, TopOriginExplicitVerificationMode, false, false, false, true, credPubKey, SignaturePolicy{}))
 
 	assert.Equal(t, bytes.Repeat([]byte{0xAA}, spare), tail, "verification wrote into the spare capacity of the authenticator data the caller still holds")
 }

@@ -931,6 +931,71 @@ func TestCreateCredential_Full(t *testing.T) {
 	}
 }
 
+func TestCreateCredentialRecordsRegistrationUserVerification(t *testing.T) {
+	credParams := []protocol.CredentialParameter{{Type: protocol.PublicKeyCredentialType, Algorithm: webauthncose.AlgES256}}
+
+	testCases := []struct {
+		name     string
+		flags    protocol.AuthenticatorFlags
+		session  protocol.UserVerificationRequirement
+		expected protocol.UserVerificationRequirement
+	}{
+		{
+			name:     "ShouldRecordRequired",
+			flags:    protocol.FlagUserPresent | protocol.FlagUserVerified | protocol.FlagBackupEligible | protocol.FlagAttestedCredentialData,
+			session:  protocol.VerificationRequired,
+			expected: protocol.VerificationRequired,
+		},
+		{
+			name:     "ShouldRecordPreferred",
+			flags:    protocol.FlagUserPresent | protocol.FlagBackupEligible | protocol.FlagBackupState | protocol.FlagAttestedCredentialData,
+			session:  protocol.VerificationPreferred,
+			expected: protocol.VerificationPreferred,
+		},
+		{
+			name:     "ShouldRecordDiscouraged",
+			flags:    protocol.FlagUserPresent | protocol.FlagBackupEligible | protocol.FlagBackupState | protocol.FlagAttestedCredentialData,
+			session:  protocol.VerificationDiscouraged,
+			expected: protocol.VerificationDiscouraged,
+		},
+		{
+			name:  "ShouldRecordEmptyWhenSessionUnset",
+			flags: protocol.FlagUserPresent | protocol.FlagBackupEligible | protocol.FlagBackupState | protocol.FlagAttestedCredentialData,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			body, challenge, credentialID := testRegistrationSpecVectorNoneES256Flags(t, tc.flags)
+
+			parsedResponse, err := protocol.ParseCredentialCreationResponseBytes(body)
+			require.NoError(t, err)
+
+			userID := []byte(testUserID)
+
+			w := &WebAuthn{
+				Config: &Config{
+					RPID:      "example.org",
+					RPOrigins: []string{"https://example.org"},
+				},
+			}
+
+			session := SessionData{
+				Challenge:        challenge,
+				UserID:           userID,
+				CredParams:       credParams,
+				UserVerification: tc.session,
+			}
+
+			credential, err := w.CreateCredential(&defaultUser{id: userID}, session, parsedResponse)
+			require.NoError(t, err)
+			require.NotNil(t, credential)
+			assert.Equal(t, credentialID, credential.ID)
+			assert.Equal(t, tc.expected, credential.RegistrationUserVerification)
+		})
+	}
+}
+
 func TestCreateCredentialUsesSessionRelyingPartyID(t *testing.T) {
 	body, challenge, credentialID := testRegistrationSpecVectorNoneES256(t)
 
